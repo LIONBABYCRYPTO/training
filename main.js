@@ -1,89 +1,110 @@
-import { ABI } from './abi'
-const contract = "0xE2a66563b155E2758fa9C0fE52cd63922383259B"
+import { ABI } from './abi';
+
+const contractAddress = "0xa1ee5587E20cE87c4AbdfaFDE08e67750E4A3735";
 
 const connex = new Connex({
   node: 'https://vethor-node-test.vechaindev.com',
   network: 'test'
-})
+});
 
+let userLoggedIn = false;
 
-var userlogin = false
-var loginbtn = document.querySelector('#login-btn')
+document.addEventListener('DOMContentLoaded', () => {
+  const loginBtn = document.querySelector('#login-btn');
+  const storeBtn = document.querySelector('#store-btn');
+  const readBtn = document.querySelector('#read-btn');
 
-loginbtn.onclick = async () => {
-  const message = {
-    purpose: "identification",
-    payload: {
-      type: "text",
-      content: "Sign this a certificate to prove your identity",
-    },
+  loginBtn.addEventListener('click', handleLogin);
+  storeBtn.addEventListener('click', handleStore);
+  readBtn.addEventListener('click', handleRead);
+});
+
+async function handleLogin() {
+  try {
+    const message = {
+      purpose: "identification",
+      payload: {
+        type: "text",
+        content: "Sign this certificate to prove your identity",
+      },
+    };
+
+    const certResponse = await connex.vendor.sign("cert", message).request();
+
+    if (certResponse) {
+      userLoggedIn = true;
+      const userAddress = certResponse.annex.signer;
+      toggleLoginDisplay(userAddress);
+    } else {
+      alert("Wallet not found");
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+    alert("An error occurred during login");
   }
-  const certResponse = await connex.vendor.sign("cert", message).request()
-  console.log(certResponse)
-  if (certResponse) {
-    userlogin = true
-    const useraddress = certResponse.annex.signer
-    document.querySelector('#login-body').className = 'hidden'
-    document.querySelector('#dapp-body').classList.remove('hidden')
-    document.querySelector('#user-address').innerHTML = useraddress
-  } else {
-    alert("Wallet not found")
-  }
-
 }
 
-var storebtn = document.querySelector('#store-btn')
+function toggleLoginDisplay(userAddress) {
+  const loginBody = document.querySelector('#login-body');
+  const dappBody = document.querySelector('#dapp-body');
+  const userAddressElement = document.querySelector('#user-address');
 
-storebtn.onclick = async () => {
+  loginBody.classList.add('hidden');
+  dappBody.classList.remove('hidden');
+  userAddressElement.innerHTML = userAddress;
+}
 
-  if (userlogin) {
+async function handleStore() {
+  if (!userLoggedIn) {
+    alert("Please sign in first!");
+    return;
+  }
 
-    const number = document.querySelector('#store-input').value
+  try {
+    const storeInput = document.querySelector('#store-input').value;
     const abiStore = ABI.find(({ name }) => name === "store");
 
-    if (number.length > 0) {
-
-      const clause = connex.thor
-        .account(contract)
-        .method(abiStore)
-        .asClause(number);
-
-      const result = await connex.vendor
-        .sign("tx", [clause])
-        .comment('calling the store function')
-        .request();
-
-      alert("transaction done!", result.txid)
-
-    } else {
-      alert("please add number to the input")
+    if (storeInput.trim().length === 0) {
+      alert("Please add a number to the input");
+      return;
     }
 
-  } else {
-    alert("Please sign in first!")
+    const clause = connex.thor
+      .account(contractAddress)
+      .method(abiStore)
+      .asClause(storeInput);
+
+    const result = await connex.vendor
+      .sign("tx", [clause])
+      .comment('Calling the store function')
+      .request();
+
+    alert("Transaction done! Transaction ID: " + result.txid);
+  } catch (error) {
+    console.error("Error during store operation:", error);
+    alert("An error occurred during store operation");
   }
-
 }
 
-var readbtn = document.querySelector('#read-btn')
+async function handleRead() {
+  try {
+    const contractNumberElement = document.querySelector('#contract-number');
+    const abiRetrieve = ABI.find(({ name }) => name === "read");
 
-readbtn.onclick = async () => {
+    contractNumberElement.innerHTML = "Loading...";
 
-  const contractnumber = document.querySelector('#contract-number')
-  const abiRetrieve = ABI.find(({ name }) => name === "read");
+    const result = await connex.thor
+      .account(contractAddress)
+      .method(abiRetrieve)
+      .call();
 
-  contractnumber.innerHTML = "loading"
-
-  const result = await connex.thor
-    .account(contract)
-    .method(abiRetrieve)
-    .call();
-
-    if(result){
-      contractnumber.innerHTML = result.decoded[0]
+    if (result) {
+      contractNumberElement.innerHTML = result.decoded[0];
     } else {
-      contractnumber.innerHTML = "failed to fetch"
+      contractNumberElement.innerHTML = "Failed to fetch";
     }
-
+  } catch (error) {
+    console.error("Error during read operation:", error);
+    alert("An error occurred during read operation");
+  }
 }
-

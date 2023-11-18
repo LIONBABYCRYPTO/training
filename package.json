@@ -1,5 +1,5 @@
 {
-  "name": "vechain",
+  "name": "dapp",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,6 +9,6 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "vite": "^4.1.0"
+    "vite": "^5.0.0"
   }
 }
